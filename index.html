@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>もしも闘技場 — 偉人はどちらが強いのか</title>
+<meta name="description" content="時代も分野も違う偉人を、共通の土俵に乗せて戦わせる。判定の根拠はすべて公開。">
+<style>
+  :root {
+    --bg: #14171f;
+    --panel: #1c202b;
+    --panel-2: #232838;
+    --line: #333a4d;
+    --text: #e8e6df;
+    --muted: #8b93a7;
+    --gold: #d4a952;
+    --red: #c65f4e;
+    --blue: #5b8bb8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    line-height: 1.7;
+    padding: 24px 16px 64px;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+
+  header { text-align: center; margin-bottom: 32px; }
+  h1 {
+    font-size: clamp(24px, 5vw, 36px);
+    margin: 0 0 8px;
+    letter-spacing: 0.12em;
+    color: var(--gold);
+  }
+  .subtitle { color: var(--muted); font-size: 13px; margin: 0; letter-spacing: 0.05em; }
+
+  /* --- 人物選択 --- */
+  .matchup { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center; margin-bottom: 20px; }
+  .vs { color: var(--gold); font-size: 20px; letter-spacing: 0.1em; }
+  .picker { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px; }
+  .picker.side-a { border-top: 3px solid var(--red); }
+  .picker.side-b { border-top: 3px solid var(--blue); }
+  select {
+    width: 100%; padding: 8px; font-size: 15px; font-family: inherit;
+    background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--line); border-radius: 5px;
+  }
+  .meta { font-size: 12px; color: var(--muted); margin-top: 8px; min-height: 20px; }
+
+  /* --- 土俵選択 --- */
+  .fields { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 8px; }
+  .field-btn {
+    background: var(--panel); color: var(--muted); font-family: inherit; font-size: 14px;
+    border: 1px solid var(--line); border-radius: 999px; padding: 7px 16px; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .field-btn:hover { color: var(--text); border-color: var(--gold); }
+  .field-btn[aria-pressed="true"] { background: var(--gold); color: #14171f; border-color: var(--gold); }
+  .field-desc { text-align: center; color: var(--muted); font-size: 13px; min-height: 44px; margin-bottom: 8px; }
+
+  .fight {
+    display: block; width: 100%; max-width: 280px; margin: 0 auto 36px;
+    padding: 13px; font-family: inherit; font-size: 17px; letter-spacing: 0.3em;
+    background: transparent; color: var(--gold);
+    border: 1px solid var(--gold); border-radius: 6px; cursor: pointer; transition: all 0.15s;
+  }
+  .fight:hover { background: var(--gold); color: #14171f; }
+  .fight:disabled { opacity: 0.35; cursor: not-allowed; }
+  .fight:disabled:hover { background: transparent; color: var(--gold); }
+
+  /* --- 結果 --- */
+  .result[hidden] { display: none; }
+  .verdict { text-align: center; margin-bottom: 24px; }
+  .winner-name { font-size: clamp(22px, 5vw, 30px); color: var(--gold); margin: 0 0 4px; }
+  .verdict-sub { color: var(--muted); font-size: 13px; margin: 0; }
+
+  .bar { display: flex; height: 40px; border-radius: 6px; overflow: hidden; margin: 18px 0 6px; border: 1px solid var(--line); }
+  .bar-a, .bar-b { display: flex; align-items: center; font-size: 14px; transition: width 0.5s ease; }
+  .bar-a { background: var(--red); justify-content: flex-start; padding-left: 12px; }
+  .bar-b { background: var(--blue); justify-content: flex-end; padding-right: 12px; }
+  .bar-names { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+
+  .decisive {
+    background: var(--panel); border-left: 3px solid var(--gold);
+    padding: 14px 18px; border-radius: 0 6px 6px 0; margin-bottom: 28px; font-size: 14px;
+  }
+  .decisive strong { color: var(--gold); font-weight: normal; }
+
+  h2 { font-size: 15px; color: var(--gold); letter-spacing: 0.08em; margin: 0 0 12px; font-weight: normal; }
+
+  /* --- ステータス内訳 --- */
+  .stat-row { border-bottom: 1px solid var(--line); padding: 12px 0; }
+  .stat-row.unused { opacity: 0.4; }
+  .stat-head { display: flex; align-items: baseline; gap: 8px; font-size: 13px; margin-bottom: 8px; }
+  .stat-label { color: var(--gold); min-width: 5em; }
+  .stat-weight { color: var(--muted); font-size: 11px; }
+  .gauge { display: grid; grid-template-columns: 1fr 3.5em 1fr; align-items: center; gap: 6px; margin-bottom: 6px; }
+  .gauge-track { height: 8px; background: var(--panel-2); border-radius: 4px; overflow: hidden; display: flex; }
+  .gauge-track.left { justify-content: flex-end; }
+  .gauge-fill-a { background: var(--red); height: 100%; }
+  .gauge-fill-b { background: var(--blue); height: 100%; }
+  .gauge-nums { text-align: center; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .notes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 11.5px; color: var(--muted); line-height: 1.6; }
+  .note-a { border-left: 2px solid var(--red); padding-left: 8px; }
+  .note-b { border-left: 2px solid var(--blue); padding-left: 8px; }
+
+  /* --- タネあかし --- */
+  details { margin-top: 32px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 18px; }
+  summary { cursor: pointer; color: var(--gold); font-size: 14px; }
+  details p, details li { font-size: 13px; color: var(--muted); }
+  details code { background: var(--panel-2); padding: 2px 6px; border-radius: 3px; font-size: 12px; color: var(--text); }
+
+  footer { text-align: center; color: var(--muted); font-size: 11.5px; margin-top: 40px; line-height: 1.9; }
+
+  @media (max-width: 560px) {
+    .matchup { grid-template-columns: 1fr; }
+    .vs { text-align: center; }
+    .notes { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>もしも闘技場</h1>
+    <p class="subtitle">時代も分野も違う偉人を、同じ土俵に乗せたら</p>
+  </header>
+
+  <div class="matchup">
+    <div class="picker side-a">
+      <select id="select-a" aria-label="左側の人物"></select>
+      <div class="meta" id="meta-a"></div>
+    </div>
+    <div class="vs">VS</div>
+    <div class="picker side-b">
+      <select id="select-b" aria-label="右側の人物"></select>
+      <div class="meta" id="meta-b"></div>
+    </div>
+  </div>
+
+  <div class="fields" id="fields"></div>
+  <p class="field-desc" id="field-desc"></p>
+
+  <button class="fight" id="fight">勝 負</button>
+
+  <section class="result" id="result" hidden>
+    <div class="verdict">
+      <p class="winner-name" id="winner-name"></p>
+      <p class="verdict-sub" id="verdict-sub"></p>
+    </div>
+
+    <div class="bar">
+      <div class="bar-a" id="bar-a"></div>
+      <div class="bar-b" id="bar-b"></div>
+    </div>
+    <div class="bar-names">
+      <span id="bar-name-a"></span>
+      <span id="bar-name-b"></span>
+    </div>
+
+    <div class="decisive" id="decisive"></div>
+
+    <h2>判定の内訳</h2>
+    <div id="breakdown"></div>
+  </section>
+
+  <details>
+    <summary>タネあかし ― この勝率はどう出しているのか</summary>
+    <p>AIには一切聞いていません。全部、手で書いたデータと式です。</p>
+    <ol>
+      <li>各人物に6つのステータス（0〜100）を設定。<strong>数値は作者の主観です</strong>が、なぜその値なのかの根拠を96個すべてに書いてあります。上の内訳で全部読めます。</li>
+      <li>土俵ごとにステータスの重みを変えます（合計は必ず1.0）。一騎討ちなら武勇85%、人心掌握ならカリスマ75%、というように。</li>
+      <li>重み付き合計＝その土俵でのスコア。二人のスコア差を、Eloレーティングと同じロジスティック関数 <code>1 / (1 + 10^((B-A)/25))</code> に通して勝率にします。</li>
+      <li><strong>乱数は使っていません。</strong>同じ組み合わせなら、何度やっても必ず同じ結果になります。</li>
+    </ol>
+    <p>つまりこれは占いでも予言でもなく、<strong>「私はこの人物をこう評価した」という主張を、計算可能な形にしただけ</strong>のものです。数値に納得できなければ、それは正しい反応です。根拠を読んで反論してください。</p>
+  </details>
+
+  <footer>
+    数値評価は作者の主観によるものであり、史実上の優劣を示すものではありません。<br>
+    生没年・事績は一般的な史料および辞典類の記述に基づいています。
+  </footer>
+
+</div>
+
+<script src="arena.js"></script>
+<script>
+// 画面まわり。判定そのものは arena.js の judge() が持っている。
+
+// 初期表示の組み合わせ。時代も分野も違う二人を出して、企画の意図を一目で伝える。
+const DEFAULT_A = "nobunaga";
+const DEFAULT_B = "napoleon";
+const DEFAULT_FIELD = "tenka";
+
+let selectedField = DEFAULT_FIELD;
+
+const el = {
+  selectA: document.getElementById("select-a"),
+  selectB: document.getElementById("select-b"),
+  metaA: document.getElementById("meta-a"),
+  metaB: document.getElementById("meta-b"),
+  fields: document.getElementById("fields"),
+  fieldDesc: document.getElementById("field-desc"),
+  fight: document.getElementById("fight"),
+  result: document.getElementById("result"),
+};
+
+// 人物セレクトを組み立てる。
+function buildSelects() {
+  for (const figure of FIGURES) {
+    for (const select of [el.selectA, el.selectB]) {
+      const option = document.createElement("option");
+      option.value = figure.id;
+      option.textContent = figure.name;
+      select.appendChild(option);
+    }
+  }
+  el.selectA.value = DEFAULT_A;
+  el.selectB.value = DEFAULT_B;
+}
+
+// 選択中の人物の時代・地域を出す。誰なのか分からない人物への手がかりになる。
+function updateMeta() {
+  const a = findFigure(el.selectA.value);
+  const b = findFigure(el.selectB.value);
+  el.metaA.textContent = a ? `${a.era}　${a.region}` : "";
+  el.metaB.textContent = b ? `${b.era}　${b.region}` : "";
+  // 同一人物どうしは必ず50%になり、比較として無意味なので勝負させない。
+  const isSamePerson = el.selectA.value === el.selectB.value;
+  el.fight.disabled = isSamePerson;
+  el.fight.textContent = isSamePerson ? "別の人物を選んでください" : "勝 負";
+}
+
+// 土俵ボタンを組み立てる。
+function buildFields() {
+  for (const field of FIELDS) {
+    const button = document.createElement("button");
+    button.className = "field-btn";
+    button.textContent = `${field.icon} ${field.name}`;
+    button.setAttribute("aria-pressed", String(field.key === DEFAULT_FIELD));
+    button.addEventListener("click", () => selectField(field.key));
+    el.fields.appendChild(button);
+  }
+  updateFieldDesc();
+}
+
+// 土俵を切り替える。すでに結果が出ていれば、その場で判定し直す。
+function selectField(key) {
+  selectedField = key;
+  const buttons = el.fields.querySelectorAll(".field-btn");
+  FIELDS.forEach((field, index) => {
+    buttons[index].setAttribute("aria-pressed", String(field.key === key));
+  });
+  updateFieldDesc();
+  if (!el.result.hidden) runJudge();
+}
+
+function updateFieldDesc() {
+  const field = findField(selectedField);
+  el.fieldDesc.textContent = field ? field.desc : "";
+}
+
+// 判定を実行して結果を描画する。
+function runJudge() {
+  let result;
+  try {
+    result = judge(el.selectA.value, el.selectB.value, selectedField);
+  } catch (error) {
+    // データ不整合など想定外の入力は、黙って壊れるより画面に出す。
+    el.result.hidden = false;
+    el.result.textContent = `判定できませんでした: ${error.message}`;
+    return;
+  }
+  renderVerdict(result);
+  renderBreakdown(result);
+  el.result.hidden = false;
+}
+
+// 勝者・勝率バー・決め手を描画する。
+function renderVerdict(result) {
+  const winner = result.winner === "a" ? result.a : result.b;
+  const winRate = Math.max(result.winRateA, result.winRateB);
+
+  document.getElementById("winner-name").textContent = `${winner.name}　の勝ち`;
+  document.getElementById("verdict-sub").textContent =
+    `${result.field.icon} ${result.field.name}　${winRate}% の確率で勝利`;
+
+  const barA = document.getElementById("bar-a");
+  const barB = document.getElementById("bar-b");
+  barA.style.width = `${result.winRateA}%`;
+  barB.style.width = `${result.winRateB}%`;
+  // バーが細いときに数字がはみ出さないよう、狭い側は表示を省く。
+  const MIN_WIDTH_FOR_LABEL = 15;
+  barA.textContent = result.winRateA >= MIN_WIDTH_FOR_LABEL ? `${result.winRateA}%` : "";
+  barB.textContent = result.winRateB >= MIN_WIDTH_FOR_LABEL ? `${result.winRateB}%` : "";
+  document.getElementById("bar-name-a").textContent = result.a.name;
+  document.getElementById("bar-name-b").textContent = result.b.name;
+
+  // 決め手＝この土俵で最も勝敗に効いたステータスと、その根拠。
+  const decisive = result.decisive;
+  const strongerSide = decisive.contribution >= 0 ? result.a : result.b;
+  const strongerNote = decisive.contribution >= 0 ? decisive.noteA : decisive.noteB;
+  document.getElementById("decisive").innerHTML =
+    `決め手は <strong>${escapeHtml(decisive.label)}</strong> でした。<br>` +
+    `${escapeHtml(strongerSide.name)}：${escapeHtml(strongerNote)}`;
+}
+
+// ステータスごとの内訳を描画する。数値の隣に必ず根拠を並べるのがこの画面の主役。
+function renderBreakdown(result) {
+  const container = document.getElementById("breakdown");
+  container.innerHTML = "";
+
+  for (const row of result.breakdown) {
+    const isUnused = row.weight === 0;
+    const div = document.createElement("div");
+    div.className = isUnused ? "stat-row unused" : "stat-row";
+    div.innerHTML = `
+      <div class="stat-head">
+        <span class="stat-label">${escapeHtml(row.label)}</span>
+        <span class="stat-weight">${isUnused ? "この土俵では効かない" : `重み ${Math.round(row.weight * 100)}%`}</span>
+      </div>
+      <div class="gauge">
+        <div class="gauge-track left"><div class="gauge-fill-a" style="width:${row.valueA}%"></div></div>
+        <div class="gauge-nums">${row.valueA} / ${row.valueB}</div>
+        <div class="gauge-track"><div class="gauge-fill-b" style="width:${row.valueB}%"></div></div>
+      </div>
+      <div class="notes">
+        <div class="note-a">${escapeHtml(row.noteA)}</div>
+        <div class="note-b">${escapeHtml(row.noteB)}</div>
+      </div>
+    `;
+    container.appendChild(div);
+  }
+}
+
+// データ由来の文字列をそのまま innerHTML に入れないためのエスケープ。
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// --- 初期化 ---
+buildSelects();
+buildFields();
+updateMeta();
+el.selectA.addEventListener("change", () => { updateMeta(); if (!el.result.hidden) runJudge(); });
+el.selectB.addEventListener("change", () => { updateMeta(); if (!el.result.hidden) runJudge(); });
+el.fight.addEventListener("click", runJudge);
+</script>
+</body>
+</html>

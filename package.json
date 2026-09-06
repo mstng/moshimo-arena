@@ -1,0 +1,9 @@
+{
+  "name": "moshimo-arena",
+  "version": "1.0.0",
+  "description": "もしも闘技場 - 時代も分野も違う偉人を共通の土俵で戦わせる、根拠が全部見える対戦シミュレータ",
+  "private": true,
+  "scripts": {
+    "test": "node --test test/arena.test.js"
+  }
+}
